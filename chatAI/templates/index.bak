@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI RPG Q&A</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <script src="/static/scripts/loadModels.js" defer></script>
+    <script src="/static/scripts/resizeSidebar.js" defer></script>
+</head>
+<body data-default-model="{{ default_model }}">
+    <div id="container">
+        <div id="sidebar">
+            <button id="new-conversation">+ New Conversation</button>
+                <div id="footer">
+                blacklisted.work AI-Chat ©2025
+                </div>
+            <div id="conversation-list">
+                <!-- Conversations will appear here -->
+            </div>
+        </div>
+        <div id="resizer"></div>
+        <div id="main">
+            <div id="response-box">
+                {% for entry in history %}
+                    <p><strong>You:</strong> {{ entry.prompt }}</p>
+                    <p><strong>Ollama ({{ entry.model }}):</strong></p>
+                    <div class="markdown-response">{{ entry.response_html | safe }}</div>
+                    <hr>
+                {% endfor %}
+            </div>
+            <div id="input-box">
+                <form action="/ask" method="post" id="input-form">
+                    <div class="form-header">
+                        <label for="model">Model:</label>
+                        <select name="model" id="model">
+                            <option value="hermes3">hermes3</option>
+                        </select>
+                        blacklisted.work AI-Chat ©2025 
+                        <input
+                            type="image"
+                            src="/static/images/submit.png"
+                            alt="Submit"
+                            id="submit-button">
+                    </div>
+                    <div class="form-body">
+                        <textarea name="prompt" placeholder="Ask a question" required></textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+    <script src="/static/scripts/scrollBottom.js" defer></script>
+</html>

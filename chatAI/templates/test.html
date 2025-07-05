@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resize Test</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+        }
+
+        #sidebar {
+            width: 200px;
+            background: #222;
+            color: white;
+            padding: 1em;
+        }
+
+        #resizer {
+            width: 5px;
+            background: red;
+            cursor: col-resize;
+        }
+
+        #main {
+            flex: 1;
+            background: #444;
+            color: white;
+            padding: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">Sidebar</div>
+    <div id="resizer"></div>
+    <div id="main">Main Content</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const resizer = document.getElementById('resizer');
+
+            resizer.addEventListener('mousedown', initResize);
+
+            function initResize(e) {
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', stopResize);
+            }
+
+            function resize(e) {
+                let newWidth = e.clientX;
+                const min = 100;
+                const max = window.innerWidth * 0.5;
+
+                if (newWidth < min) newWidth = min;
+                if (newWidth > max) newWidth = max;
+
+                sidebar.style.width = newWidth + 'px';
+            }
+
+            function stopResize() {
+                document.removeEventListener('mousemove', resize);
+                document.removeEventListener('mouseup', stopResize);
+            }
+        });
+    </script>
+</body>
+</html>
+

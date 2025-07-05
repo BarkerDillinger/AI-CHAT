@@ -1,0 +1,49 @@
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+import requests
+import os
+
+def create_app():
+    app = FastAPI()
+
+    # Set your Ollama API endpoint
+    OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+
+    # Store Q&A history in memory for now
+    history = []
+
+    # Set up templating and static files
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    templates = Jinja2Templates(directory="templates")
+
+    @app.get("/", response_class=HTMLResponse)
+    def index(request: Request):
+        return templates.TemplateResponse("index.html", {"request": request, "history": history})
+
+    @app.post("/ask")
+def ask(request: Request, prompt: str = Form(...)):
+    payload = {
+        "model": "hermes3",
+        "prompt": prompt,
+        "stream": False  # <--- Add this line if you want to stick with response.json()
+    }
+    try:
+        response = requests.post(OLLAMA_URL, json=payload)
+        response.raise_for_status()
+        result = response.json().get("response", "[No Response]")
+    except Exception as e:
+        result = f"[Error contacting Ollama: {e}]"
+
+    history.append({"prompt": prompt, "response": result})
+    return RedirectResponse(url="/", status_code=303)
+
+
+    return app
+
+app = create_app()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("ai_rpg.main:app", host="127.0.0.1", port=8080, reload=True)
