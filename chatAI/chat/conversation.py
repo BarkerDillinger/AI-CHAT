@@ -9,6 +9,7 @@ os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
 
 # Ensure the tables exist
 def init_db():
+    print("[DB INIT] Initializing database and creating tables...")
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -58,6 +59,13 @@ def list_conversations():
         cursor = conn.cursor()
         cursor.execute("SELECT id, title, created_at FROM conversations ORDER BY created_at DESC")
         return cursor.fetchall()
+    
+def update_conversation_title(conversation_id, title):
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE conversations SET title = ? WHERE id = ?", (title, conversation_id))
+        conn.commit()
+
 
 # Initialize DB on module load
 init_db()

@@ -1,1 +1,5 @@
 chatai/
+git/
+__pycache__/
+*.pyc
+*.db

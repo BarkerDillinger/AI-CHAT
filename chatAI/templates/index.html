@@ -15,6 +15,7 @@
     <script src="/static/scripts/resizeSidebar.js" defer></script>
     <script src="/static/scripts/autoResizeTextarea.js" defer></script>
     <script src="/static/scripts/enterSubmit.js" defer></script>
+    <script src="/static/scripts/windowResize.js" defer></script>
 
 </head>
 <body data-default-model="{{ default_model }}">
@@ -23,15 +24,20 @@
             <button id="new-conversation">+ New Conversation</button>
             <div id="conversation-list">
                 <!-- Conversations will appear here -->
+                {% for convo in conversations %}
+                    <a href="/conversation/{{ convo[0] }}" class="conversation-item">
+                        {{ convo[1] or "Untitled" }}
+                    </a>
+                {% endfor %} 
             </div>
         </div>
         <div id="resizer"></div>
         <div id="main">
             <div id="response-box">
                 {% for entry in history %}
-                    <p><strong>You:</strong> {{ entry.prompt }}</p>
+                    <p><strong>You:</strong> <span class="user-prompt">{{ entry.prompt }}</span></p>
                     <p><strong>Ollama ({{ entry.model }}):</strong></p>
-                    <div class="markdown-response">
+                    <div class="markdown-response ai-response">
                         {{ entry.response_html | safe }}
                     </div>
                     <hr>
