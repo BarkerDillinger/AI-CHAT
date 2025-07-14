@@ -25,4 +25,4 @@ fi
 trap "echo 'Stopping Ollama...'; kill $OL_PID" EXIT
 
 # Start the chatAI app
-PYTHONPATH=. uvicorn chat.main:app --reload --port 4242
+PYTHONPATH=. uvicorn chat.main:app --host 0.0.0.0 --reload --port 4242

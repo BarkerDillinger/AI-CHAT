@@ -1,5 +1,8 @@
+bak/
 chatai/
 git/
+requirements.txt.*
+start.sh.*
 __pycache__/
 *.pyc
 *.db

@@ -1,48 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<meta charset="UTF-8">
+<head>
+    <meta charset="UTF-8">
     <meta name="author" content="blacklisted.work">
     <meta name="keywords" content="blacklisted.work AI Portal - chatAI">
     <meta name="description" content="This project is a lightweight AI chat interface that allows users to interact with AI models. It features a sidebar for conversation management, a main area for displaying responses, and an input box for submitting prompts. The interface is designed to be user-friendly and responsive.">
     <link rel="icon" href="/static/images/greyhaticon.png" type="image/png">
-
-<html>
-<head>
+    
     <title>blacklisted.work - chatAI</title>
-    <link rel="stylesheet" type="text/css" href="/static/style.css">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/sidebar.css">
+    <link rel="stylesheet" href="/static/css/output.css">
+    <link rel="stylesheet" href="/static/css/input.css">
+    <!-- Mobile Screen Overrides -->
+    <link rel="stylesheet" href="/static/css/mobile.css">
+
+    <!-- JavaScript -->
     <script src="/static/scripts/loadModels.js" defer></script>
     <script src="/static/scripts/resizeSidebar.js" defer></script>
     <script src="/static/scripts/autoResizeTextarea.js" defer></script>
     <script src="/static/scripts/enterSubmit.js" defer></script>
     <script src="/static/scripts/windowResize.js" defer></script>
+    <script src="/static/scripts/newConversation.js" defer></script>
+    <script src="/static/scripts/screenHeight.js" defer></script>
+    <script src="/static/scripts/addCopyButtons.js" defer></script>
 
 </head>
+
 <body data-default-model="{{ default_model }}">
     <div id="container">
         <div id="sidebar">
             <button id="new-conversation">+ New Conversation</button>
-            <div id="conversation-list">
-                <!-- Conversations will appear here -->
+                <div id="conversation-list">
                 {% for convo in conversations %}
-                    <a href="/conversation/{{ convo[0] }}" class="conversation-item">
-                        {{ convo[1] or "Untitled" }}
+                    <a href="/conversation/{{ convo[0] }}">
+                        <div class="conversation-item">
+                            {{ convo[1] or "Untitled" }}
+                        </div>
                     </a>
-                {% endfor %} 
-            </div>
+                {% endfor %}
+                </div>
         </div>
+
         <div id="resizer"></div>
+
         <div id="main">
             <div id="response-box">
-                {% for entry in history %}
-                    <p><strong>You:</strong> <span class="user-prompt">{{ entry.prompt }}</span></p>
-                    <p><strong>Ollama ({{ entry.model }}):</strong></p>
-                    <div class="markdown-response ai-response">
-                        {{ entry.response_html | safe }}
+                {% if not conversation_id %}
+                    <div id="welcome-message">
+                        <img src="/static/images/blacklistedwork.png" alt="Welcome Logo" class="welcome-logo">
+                        <h1>Welcome to chatAI</h1>
+                        <p>This platform allows you to explore intelligent conversation with powerful models.</p></br>
+                        <p>Ask a question below to get started or select a previous conversation from the sidebar.</p>
                     </div>
-                    <hr>
-                {% endfor %}
+                {% else %}
+                    {% for entry in history %}
+                        <div class="conversation-pair">
+                            <p><strong>You:</strong> <span class="user-prompt">{{ entry.prompt }}</span></p>
+                            <p><strong>Ollama ({{ entry.model }}):</strong></p>
+                            <div class="markdown-response ai-response">
+                                {{ entry.response_html | safe }}
+                            </div>
+                        </div>
+                        <hr>
+                    {% endfor %}
+                {% if not history %}
+                    <p class="no-history">No conversation history available. Start a new conversation!</p>
+                {% endif %}
+
+                {% endif %}
+                {% if conversation_id %}
+                    <button id="copy-latest-response">📄 Copy Last AI Response</button>
+                {% endif %}
             </div>
+
+
             <div id="input-box">
                 <form action="/ask" method="post" id="input-form">
                     <div class="form-header">
@@ -61,13 +95,13 @@
                     </div>
                 </form>
             </div>
-        <div>
+
             <footer id="footer">
                 blacklisted.work Creative Commons ©2025
             </footer>
         </div>
     </div>
-</body>
 
     <script src="/static/scripts/scrollBottom.js" defer></script>
+</body>
 </html>

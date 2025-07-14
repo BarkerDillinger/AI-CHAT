@@ -1,0 +1,61 @@
+#sidebar {
+    background-color: #111;
+    width: 20%;
+    min-width: 150px;
+    max-width: 50%;
+    padding: 1em;
+    box-sizing: border-box;
+    color: #F0FF00;
+    resize: horizontal;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+#new-conversation {
+    margin-bottom: 1em;
+    padding: 8px;
+    background-color: #00FF00;
+    color: black;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+
+#new-conversation:hover {
+    background-color: #F0FF00;
+}
+
+#conversation-list {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.conversation-item {
+    display: block;
+    background-color: #595959;
+    color: #00FF00;
+    padding: 0.5em 1em;
+    margin-bottom: 0.5em;
+    text-decoration: none;
+    border-radius: 6px;
+    font-family: monospace;
+    font-weight: bold;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.conversation-item:visited {
+    color: #F0FF00;
+}
+
+.conversation-item:hover {
+    background-color: #333;
+    color: #FF0000;
+    cursor: pointer;
+}
+
+#resizer {
+    width: 5px;
+    background: #333;
+    cursor: col-resize;
+}
