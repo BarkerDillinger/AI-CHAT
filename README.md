@@ -1,6 +1,2 @@
 # AI-CHAT
-### This is the Default branch for Pull Requests - Update on Succesful Working Changes
-
-This branch is to convert the SQLight database to a SQLcrypt database. Changes will include data encryption and adding support for multiple users.
-
-Updates Comming as Changes are Made...
+This is the base functioning application in it's simplest form and should not be edited or branched. This is a backup working copy of the base code.
