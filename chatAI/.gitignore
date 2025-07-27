@@ -2,7 +2,8 @@ bak/
 chatai/
 git/
 requirements.txt.*
-start.sh.*
+start.sh*
+README.md
 __pycache__/
 *.pyc
 *.db

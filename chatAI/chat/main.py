@@ -2,7 +2,9 @@ import os
 import sys
 import requests
 import markdown2
+import subprocess
 
+from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -42,6 +44,29 @@ def create_app():
         response = RedirectResponse(url="/")
         response.delete_cookie("conversation_id")
         return response
+    
+    @app.get("/models")
+    async def get_models():
+        try:
+            result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
+            lines = result.stdout.strip().splitlines()
+
+            models = []
+            for line in lines[1:]:  # Skip the header row
+                parts = line.split()
+                if parts:
+                    model = parts[0].split(":")[0]  # Strip off ":latest", ":13b", etc.
+                    models.append(model)
+
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_models = [m for m in models if not (m in seen or seen.add(m))]
+
+            return JSONResponse(content=unique_models)
+        except Exception as e:
+            print(f"[ERROR] Failed to get models from ollama: {e}")
+            return JSONResponse(content=["hermes3"], status_code=500)
+
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):

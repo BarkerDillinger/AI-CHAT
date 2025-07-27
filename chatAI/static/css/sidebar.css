@@ -1,7 +1,7 @@
 #sidebar {
     background-color: #111;
     width: 20%;
-    min-width: 150px;
+    min-width: 200px;
     max-width: 50%;
     padding: 1em;
     box-sizing: border-box;
@@ -24,6 +24,26 @@
 
 #new-conversation:hover {
     background-color: #F0FF00;
+}
+
+#new-conversation {
+    position: relative;
+    display: inline-block;
+    padding: 8px 12px;
+    background-color: #222;  /* Charcoal */
+    color: white;
+    border: 1px solid #00FF00;  /* Green outline */
+    border-radius: 6px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+#new-conversation:hover {
+    background-color: #333;
+    color: #F0FF00;  /* Yellow-green on hover */
 }
 
 #conversation-list {

@@ -32,7 +32,7 @@
 <body data-default-model="{{ default_model }}">
     <div id="container">
         <div id="sidebar">
-            <button id="new-conversation">+ New Conversation</button>
+            <button id="new-conversation" class="button">+ New Conversation</button>
                 <div id="conversation-list">
                 {% for convo in conversations %}
                     <a href="/conversation/{{ convo[0] }}">
@@ -72,7 +72,7 @@
 
                 {% endif %}
                 {% if conversation_id %}
-                    <button id="copy-latest-response">📄 Copy Last AI Response</button>
+                    <button id="copy-entire-output" class="button">📄 Copy AI Conversation</button>
                 {% endif %}
             </div>
 

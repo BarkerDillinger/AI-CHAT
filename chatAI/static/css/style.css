@@ -193,21 +193,32 @@ textarea {
 }
 
 
-button {
+/* Shared button style for sidebar and AI copy actions */
+.button,
+#new-conversation,
+#copy-entire-output {
+    position: relative;
+    display: inline-block;
     padding: 8px 12px;
-    background-color: #111;
-    color: #00FF00;
-    border: 1px solid #00FF00;
-    border-radius: 4px;
+    background-color: #222;  /* Charcoal */
+    color: white;
+    border: 1px solid #00FF00;  /* Green outline */
+    border-radius: 6px;
     font-family: monospace;
     font-weight: bold;
-    border: none;
+    font-size: 0.9em;
     cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
 }
 
-button:hover {
-    background-color: #F0FF00;
+.button:hover,
+#new-conversation:hover,
+#copy-entire-output:hover {
+    background-color: #333;
+    color: #F0FF00;  /* Yellow-green on hover */
 }
+
+
 
 .scroll-horizontal {
     overflow-x: auto;

@@ -9,8 +9,12 @@ document.addEventListener("DOMContentLoaded", () => {
         button.innerText = "📋";
 
         button.addEventListener("click", () => {
-            const text = block.innerText || block.textContent;
-            console.log("[CopyButton] Attempting to copy text:", text.slice(0, 40));
+            let text = block.innerText || block.textContent;
+
+            // Remove the emoji from any text and trim extra lines
+            text = text.replace(/📋/g, "").trim();
+
+            console.log("[CopyButton] Attempting to copy sanitized text:", text.slice(0, 40));
 
             if (!navigator.clipboard) {
                 console.warn("[CopyButton] Clipboard API not supported");
@@ -56,14 +60,16 @@ document.addEventListener("DOMContentLoaded", () => {
         subtree: true
     });
 
-    // Full conversation copy button
+    // Modify full output and latest response copy behavior as well
+    const sanitizeText = (text) => text.replace(/📋/g, "").trim();
+
     const copyAllBtn = document.getElementById("copy-entire-output");
     if (copyAllBtn) {
         copyAllBtn.addEventListener("click", () => {
             const blocks = document.querySelectorAll(".markdown-response.ai-response");
             let allText = "";
             blocks.forEach(block => {
-                allText += block.innerText + "\n\n";
+                allText += sanitizeText(block.innerText || block.textContent) + "\n\n";
             });
 
             navigator.clipboard.writeText(allText.trim()).then(() => {
@@ -77,7 +83,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Copy latest AI response only
     const copyLatestBtn = document.getElementById("copy-latest-response");
     if (copyLatestBtn) {
         copyLatestBtn.addEventListener("click", () => {
@@ -95,8 +100,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const text = aiResponse.innerText || aiResponse.textContent;
-            navigator.clipboard.writeText(text.trim()).then(() => {
+            const text = sanitizeText(aiResponse.innerText || aiResponse.textContent);
+            navigator.clipboard.writeText(text).then(() => {
                 console.log("[CopyLatest] Copied last AI response");
                 copyLatestBtn.innerText = "✅ Copied!";
                 setTimeout(() => (copyLatestBtn.innerText = "📄"), 1500);
