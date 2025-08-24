@@ -1,24 +1,63 @@
-# Stage 2: Extract /ask into prompts.py
-
 # File: chat/routes/prompts.py
+import os
+import requests
+import sqlite3
 
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse
 from threading import Thread
-import os, requests
+from typing import cast
 from ..conversation import (
-    create_conversation, add_message, get_recent_conversation_pairs,
-    update_conversation_title, save_summarized_memory
+    create_conversation,
+    add_message,
+    update_conversation_title,
+    save_summarized_memory,
 )
 
 router = APIRouter()
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 
+# Paths relative to this file: chat/routes → parent is chat/
+CHAT_DIR = os.path.dirname(os.path.dirname(__file__))
+DB_FILE = os.path.join(CHAT_DIR, "data", "conversation_memory.db")
+MEM_DIR = os.path.join(CHAT_DIR, "data", "memory")
+
+
+def _conversation_exists(cid: int | None) -> bool:
+    if cid is None:
+        return False
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM conversations WHERE id = ? LIMIT 1", (cid,))
+            return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
 @router.post("/ask")
 async def ask(request: Request, prompt: str = Form(...), model: str = Form("hermes3")):
-    conversation_id = request.cookies.get("conversation_id")
-    memory_path = os.path.join("chat", "data", "memory", f"convo_{conversation_id}.txt")
+    # Normalize cookie → conversation_id (int | None)
+    raw = request.cookies.get("conversation_id")
+    try:
+        conversation_id = int(raw) if raw is not None else None
+    except (ValueError, TypeError):
+        conversation_id = None
 
+    new_convo = False
+    if not _conversation_exists(conversation_id):
+        # Create the conversation and give it a quick title from the prompt
+        conversation_id = create_conversation("New Chat")
+        quick_title = (prompt.strip() or "New Chat")[:60].rstrip()
+        try:
+            update_conversation_title(conversation_id, quick_title)
+        except Exception:
+            pass
+        new_convo = True
+
+    # Memory context
+    os.makedirs(MEM_DIR, exist_ok=True)
+    memory_path = os.path.join(MEM_DIR, f"convo_{conversation_id}.txt")
     if os.path.exists(memory_path):
         with open(memory_path, "r", encoding="utf-8") as f:
             memory_context = f.read().strip()
@@ -31,40 +70,37 @@ async def ask(request: Request, prompt: str = Form(...), model: str = Form("herm
 
     full_prompt = f"{memory_context}\n\nCurrent user input:\n{prompt}"
 
-    if conversation_id is None:
-        conversation_id = create_conversation("Default Chat")
-        try:
-            resp = requests.post(OLLAMA_URL, json={
-                "model": model,
-                "prompt": f"Summarize this in 3-5 words:\n\n\"{prompt}\"",
-                "stream": False
-            })
-            resp.raise_for_status()
-            title = resp.json().get("response", "").strip().strip('"')
-            if title:
-                update_conversation_title(conversation_id, title.title())
-        except Exception as e:
-            print(f"[WARN] Title generation failed: {e}")
-    else:
-        conversation_id = int(conversation_id)
-
+    # Ask Ollama
     try:
-        response = requests.post(OLLAMA_URL, json={
-            "model": model,
-            "prompt": full_prompt,
-            "stream": False
-        })
-        response.raise_for_status()
-        result = response.json().get("response", "[No Response]")
+        resp = requests.post(
+            OLLAMA_URL,
+            json={"model": model, "prompt": full_prompt, "stream": False},
+            timeout=120,
+        )
+        resp.raise_for_status()
+        result = resp.json().get("response", "[No Response]")
     except Exception as e:
         result = f"[Error contacting Ollama: {e}]"
 
-    add_message(conversation_id, "user", prompt, model)
-    add_message(conversation_id, "assistant", result, model)
+    # Narrow Optional[int] → int for type checker (we created the convo above if missing)
+    if conversation_id is None:
+        raise RuntimeError("Conversation ID missing after creation")
+    cid: int = cast(int, conversation_id)
 
-    Thread(target=save_summarized_memory, args=(conversation_id, model)).start()
+    # Persist the exchange
+    add_message(cid, "user", prompt, model)
+    add_message(cid, "assistant", result, model)
 
-    redirect = RedirectResponse(url=f"/conversation/{conversation_id}", status_code=303)
-    redirect.set_cookie(key="selected_model", value=model, max_age=3600 * 24 * 30)
-    redirect.set_cookie(key="conversation_id", value=str(conversation_id), max_age=3600 * 24 * 30)
+    # Save a lightweight memory summary in the background
+    try:
+        summary_text = f"Last prompt:\n{prompt}\n\nLast response:\n{result}\n"
+        Thread(target=save_summarized_memory, args=(cid, summary_text), daemon=True).start()
+    except Exception:
+        pass
+
+    # Redirect to the conversation page and set cookies
+    redirect = RedirectResponse(url=f"/conversation/{cid}", status_code=303)
+    redirect.set_cookie(key="selected_model", value=model, max_age=3600 * 24 * 30, path="/", samesite="lax")
+    redirect.set_cookie(key="conversation_id", value=str(cid), max_age=3600 * 24 * 30, path="/", samesite="lax")
     return redirect
+

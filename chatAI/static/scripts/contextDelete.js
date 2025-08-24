@@ -1,4 +1,7 @@
 // static/scripts/contextDelete.js
+
+console.log("contextDelete.js loaded");
+
 (() => {
   const MENU_ID = "convo-context-menu";
 
@@ -101,7 +104,7 @@
     showMenu(e.clientX, e.clientY, {
       convoId: item.dataset.convoId,
       title: item.dataset.convoTitle
-    });
+    });console.log("contextDelete.js loaded");
   });
 
   // ---------- mobile long-press ----------

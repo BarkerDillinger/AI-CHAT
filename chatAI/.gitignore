@@ -1,9 +1,27 @@
-bak/
-chatai/
-git/
-requirements.txt.*
-start.sh*
-README.md
+# Python
 __pycache__/
-*.pyc
-*.db
+*.py[cod]
+*.pyo
+*.pyd
+*.pytest_cache/
+*.egg-info/
+
+# Local env/venv
+chatai/
+.venv/
+env/
+venv/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# App data & logs
+chat/data/
+logs/
+*.log
+
+# Node-like caches (if any)
+node_modules/

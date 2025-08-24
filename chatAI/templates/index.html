@@ -10,22 +10,23 @@
     <title>blacklisted.work - chatAI</title>
 
     <!-- CSS -->
-    <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/css/sidebar.css">
-    <link rel="stylesheet" href="/static/css/output.css">
-    <link rel="stylesheet" href="/static/css/input.css">
+    <link rel="stylesheet" href="/static/css/base.css?v={{ BUILD_ID }}">
+    <link rel="stylesheet" href="/static/css/sidebar.css?v={{ BUILD_ID }}">
+    <link rel="stylesheet" href="/static/css/output.css?v={{ BUILD_ID }}">
+    <link rel="stylesheet" href="/static/css/input.css?v={{ BUILD_ID }}">
     <!-- Mobile Screen Overrides -->
-    <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/mobile.css?v={{ BUILD_ID }}">
 
     <!-- JavaScript -->
-    <script src="/static/scripts/loadModels.js" defer></script>
-    <script src="/static/scripts/resizeSidebar.js" defer></script>
-    <script src="/static/scripts/autoResizeTextarea.js" defer></script>
-    <script src="/static/scripts/enterSubmit.js" defer></script>
-    <script src="/static/scripts/windowResize.js" defer></script>
-    <script src="/static/scripts/newConversation.js" defer></script>
-    <script src="/static/scripts/screenHeight.js" defer></script>
-    <script src="/static/scripts/addCopyButtons.js" defer></script>
+    <script src="/static/scripts/loadModels.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/resizeSidebar.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/autoResizeTextarea.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/enterSubmit.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/windowResize.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/newConversation.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/screenHeight.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/addCopyButtons.js?v={{ BUILD_ID }}" defer></script>
+    <script src="/static/scripts/contextDelete.js?v={{ BUILD_ID }}" defer></script>
 
 </head>
 
@@ -34,13 +35,18 @@
         <div id="sidebar">
             <button id="new-conversation" class="button">+ New Conversation</button>
                 <div id="conversation-list">
-                {% for convo in conversations %}
-                    <a href="/conversation/{{ convo[0] }}">
-                        <div class="conversation-item">
+                    {% for convo in conversations %}
+                        <a href="/conversation/{{ convo[0] }}" class="conversation-link">
+                        <div
+                            class="conversation-item"
+                            data-convo-id="{{ convo[0] }}"
+                            data-convo-title="{{ (convo[1] or 'Untitled')|e }}"
+                            tabindex="0"
+                        >
                             {{ convo[1] or "Untitled" }}
                         </div>
-                    </a>
-                {% endfor %}
+                        </a>
+                    {% endfor %}
                 </div>
         </div>
 
@@ -91,7 +97,13 @@
                             id="submit-button">
                     </div>
                     <div class="form-body">
-                        <textarea id="prompt" name="prompt" placeholder="Ask a question" required></textarea>
+                        <textarea
+                            id="prompt"
+                            name="prompt"
+                            placeholder="Ask a question"
+                            required
+                            onkeydown="return window.__promptKeydown ? window.__promptKeydown(event) : true;"
+                        ></textarea>
                     </div>
                 </form>
             </div>

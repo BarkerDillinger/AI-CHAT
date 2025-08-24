@@ -1,7 +1,5 @@
-# File: chat/routes/system.py
-
 from fastapi import APIRouter
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 
 router = APIRouter()
 
@@ -10,3 +8,7 @@ async def new_conversation():
     response = RedirectResponse(url="/")
     response.delete_cookie("conversation_id")
     return response
+
+@router.get("/health")
+async def health():
+    return JSONResponse({"status": "ok"})

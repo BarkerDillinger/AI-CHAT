@@ -4,6 +4,7 @@ import os
 import markdown2
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..conversation import (
@@ -82,15 +83,18 @@ async def load_conversation(conversation_id: int, request: Request):
     )
 
 # IMPORTANT: unindented, top-level route registrations
-
 @router.delete("/conversation/{conversation_id}")
-def api_delete_conversation(conversation_id: int):
-    if not delete_conversation(conversation_id):
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    return {"status": "ok"}
+async def delete_conversation_route(conversation_id: int, request: Request):
+    # remove from DB
+    counts = delete_conversation(conversation_id)  # uses your helper in conversation.py
+    resp = JSONResponse({"ok": True, **counts})
 
-@router.delete("/message/{message_id}")
-def api_delete_message(message_id: int):
-    if not delete_message(message_id):
-        raise HTTPException(status_code=404, detail="Message not found")
-    return {"status": "ok"}
+    # if the deleted convo is the one in the cookie, clear it
+    cid_cookie = request.cookies.get("conversation_id")
+    try:
+        if cid_cookie and int(cid_cookie) == conversation_id:
+            resp.delete_cookie("conversation_id", path="/")
+    except ValueError:
+        pass
+
+    return resp
