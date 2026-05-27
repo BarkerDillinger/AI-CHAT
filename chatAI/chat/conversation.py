@@ -2,29 +2,97 @@
 
 import os
 import sqlite3
-from datetime import datetime
-from typing import List, Tuple, Dict, Any, Optional
-from typing import cast
+from typing import List, Tuple, Dict, Any, Optional, cast
 
+# --- configuration -----------------------------------------------------------
 
-DB_FILE = os.path.join(os.path.dirname(__file__), "data", "conversation_memory.db")
+DB_KEY = os.getenv("CHAT_DB_KEY")  # set this to enable SQLCipher
+# If encryption is enabled, default to a new encrypted file so we never clobber
+# the plaintext DB accidentally.
+DEFAULT_DB_NAME = "conversation_memory.enc.db" if DB_KEY else "conversation_memory.db"
+DB_FILE = os.getenv(
+    "CHAT_DB_FILE",
+    os.path.join(os.path.dirname(__file__), "data", DEFAULT_DB_NAME),
+)
 
 # Ensure the directory exists
 os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
 
+_sqlcipher_mod: Any = None  # late import holder (typed Any to appease Pylance)
 
-def _connect() -> sqlite3.Connection:
+
+# --- utilities ---------------------------------------------------------------
+
+def _escape_single_quotes(s: str) -> str:
+    return s.replace("'", "''")
+
+
+def _hybrid_row(cursor, row):
     """
-    Open a SQLite connection with row access by column name.
+    Row factory that supports BOTH name *and* index access.
+
+    Example:
+      r = fetched_row
+      r["sender"] -> ok (by column name)
+      r[0]        -> ok (by index)
     """
+    out: Dict[Any, Any] = {}
+    for i, col in enumerate(cursor.description):
+        out[i] = row[i]
+        out[col[0]] = row[i]
+    return out
+
+
+def _connect():
+    """
+    Return a DB connection:
+      - SQLCipher (encrypted) if CHAT_DB_KEY is set
+      - sqlite3 (plaintext) otherwise
+
+    Row access:
+      - encrypted path -> _hybrid_row (works with pysqlcipher3 cursor)
+      - plaintext path -> sqlite3.Row
+    """
+    global _sqlcipher_mod
+
+    if DB_KEY:
+        # Encrypted (SQLCipher) path
+        try:
+            from pysqlcipher3 import dbapi2 as sqlcipher  # type: ignore
+            _sqlcipher_mod = sqlcipher  # type: ignore[assignment]
+        except Exception as e:
+            raise RuntimeError(
+                "CHAT_DB_KEY is set but pysqlcipher3 is not available. "
+                "Install system SQLCipher and `pip install pysqlcipher3`."
+            ) from e
+
+        conn = _sqlcipher_mod.connect(DB_FILE)
+        # Apply key
+        conn.execute(f"PRAGMA key = '{_escape_single_quotes(DB_KEY)}';")
+
+        # These PRAGMAs are best-effort; ignore if your SQLCipher build lacks them.
+        try:
+            conn.execute("PRAGMA cipher_compatibility = 4;")  # SQLCipher 4+
+        except Exception:
+            pass
+        try:
+            conn.execute("PRAGMA kdf_iter = 256000;")
+        except Exception:
+            pass
+
+        conn.execute("PRAGMA foreign_keys = ON;")
+        conn.row_factory = _hybrid_row  # IMPORTANT: not sqlite3.Row here
+        return conn
+
+    # Plain sqlite path
     conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    # Keep FK behavior consistent even if we ever add constraints that matter.
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.row_factory = sqlite3.Row
     return conn
 
 
-# Ensure the tables exist
+# --- schema / init -----------------------------------------------------------
+
 def init_db() -> None:
     print("[DB INIT] Initializing database and creating tables...")
     with _connect() as conn:
@@ -51,18 +119,13 @@ def init_db() -> None:
             )
             """
         )
-        # Helpful index when loading a conversation
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_messages_convo ON messages(conversation_id, timestamp)"
         )
         conn.commit()
 
-def conversation_exists(conversation_id: int) -> bool:
-    with _connect() as conn:  # or sqlite3.connect(...) if you're not using _connect()
-        cur = conn.cursor()
-        cur.execute("SELECT 1 FROM conversations WHERE id = ? LIMIT 1", (conversation_id,))
-        return cur.fetchone() is not None
-    
+
+# --- CRUD helpers ------------------------------------------------------------
 
 def create_conversation(title: str) -> int:
     with _connect() as conn:
@@ -71,7 +134,6 @@ def create_conversation(title: str) -> int:
         conn.commit()
         rowid = cur.lastrowid
         if rowid is None:
-            # Defensive: this shouldn't happen in normal SQLite inserts
             raise RuntimeError("Failed to retrieve lastrowid after inserting conversation")
         return cast(int, rowid)
 
@@ -93,8 +155,7 @@ def add_message(conversation_id: int, sender: str, message: str, model: str) -> 
         return cast(int, rowid)
 
 
-
-def get_conversation(conversation_id: int) -> List[sqlite3.Row]:
+def get_conversation(conversation_id: int):
     with _connect() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -104,7 +165,7 @@ def get_conversation(conversation_id: int) -> List[sqlite3.Row]:
         return cur.fetchall()
 
 
-def list_conversations() -> List[sqlite3.Row]:
+def list_conversations():
     with _connect() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -123,46 +184,27 @@ def update_conversation_title(conversation_id: int, title: str) -> None:
         conn.commit()
 
 
-# --- added helpers used by routers ---
-
 def delete_message(message_id: int) -> int:
-    """
-    Delete a single message by id.
-    Returns the number of rows deleted.
-    """
     with _connect() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM messages WHERE id = ?", (message_id,))
         conn.commit()
-        return cur.rowcount
+        return int(cur.rowcount or 0)
 
 
 def delete_conversation(conversation_id: int) -> Dict[str, int]:
-    """
-    Delete a conversation and all its messages.
-    Returns counts of deleted rows.
-    """
     with _connect() as conn:
         cur = conn.cursor()
-        # Delete messages first to satisfy FK constraints if enforced.
-        cur.execute(
-            "DELETE FROM messages WHERE conversation_id = ?",
-            (conversation_id,),
-        )
-        msg_count = cur.rowcount or 0
+        # messages first (FK-friendly)
+        cur.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
+        msg_count = int(cur.rowcount or 0)
         cur.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
-        conv_count = cur.rowcount or 0
+        conv_count = int(cur.rowcount or 0)
         conn.commit()
         return {"conversations_deleted": conv_count, "messages_deleted": msg_count}
 
 
-def get_recent_conversation_pairs(
-    conversation_id: int, limit: int = 25
-) -> List[Tuple[str, str]]:
-    """
-    Return up to ~limit user/assistant exchanges as (sender, message) tuples,
-    ordered oldest → newest. Implemented by fetching ~2*limit most recent rows.
-    """
+def get_recent_conversation_pairs(conversation_id: int, limit: int = 25) -> List[Tuple[str, str]]:
     with _connect() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -176,16 +218,11 @@ def get_recent_conversation_pairs(
             (conversation_id, limit * 2),
         )
         rows = cur.fetchall()
-        # Convert to simple tuples and flip to chronological order
         pairs = [(r["sender"], r["message"]) for r in rows][::-1]
         return pairs
 
 
 def save_summarized_memory(conversation_id: int, text: str) -> str:
-    """
-    Persist a short memory/summary blob for a conversation.
-    Returns the file path used.
-    """
     mem_dir = os.path.join(os.path.dirname(__file__), "data", "memory")
     os.makedirs(mem_dir, exist_ok=True)
     path = os.path.join(mem_dir, f"convo_{conversation_id}.txt")
@@ -194,5 +231,12 @@ def save_summarized_memory(conversation_id: int, text: str) -> str:
     return path
 
 
-# Initialize DB on module load
+def conversation_exists(conversation_id: int) -> bool:
+    with _connect() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM conversations WHERE id = ? LIMIT 1", (conversation_id,))
+        return cur.fetchone() is not None
+
+
+# Initialize on import
 init_db()

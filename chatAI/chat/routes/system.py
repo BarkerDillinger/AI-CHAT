@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from ..conversation import DB_FILE, DB_KEY
 from fastapi.responses import RedirectResponse, JSONResponse
 
 router = APIRouter()
@@ -12,3 +13,7 @@ async def new_conversation():
 @router.get("/health")
 async def health():
     return JSONResponse({"status": "ok"})
+
+@router.get("/health/db")
+def health_db():
+    return {"file": DB_FILE, "encrypted": bool(DB_KEY)}
